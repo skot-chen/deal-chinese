@@ -49,6 +49,23 @@ export function merge(a, b) {
   return out;
 }
 
+// ---- unit unlocking. A unit is "passed" when its game level scored ≥ PASS/10 or a lesson with the teacher was finished.
+// Unit n opens when unit n−1 is passed. state: 'open' | 'locked' (written, not yet earned) | 'writing' (content not written yet).
+export const PASS = 8;
+export function unitStatus(units, levels, s) {
+  const out = {};
+  units.forEach((u, i) => {
+    const lv = levels.find(l => l.unit === u.n);
+    const game = lv && s.best[lv.n] ? s.best[lv.n].score : 0;
+    const lesson = Object.values(s.sessions).some(x => x.unit === u.id);
+    const prev = i ? out[units[i - 1].id] : null;
+    const earned = !prev || (prev.state === 'open' && prev.passed);
+    out[u.id] = { level: lv ? lv.n : 0, game, lesson, passed: game >= PASS || lesson,
+      state: !u.ready ? 'writing' : earned ? 'open' : 'locked' };
+  });
+  return out;
+}
+
 // ---- listening game
 const ri = (rnd, lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1));
 const swap2 = n => { const s = String(n); return s.length === 2 ? +(s[1] + s[0]) : n; };

@@ -32,3 +32,15 @@ test('game questions are valid at every level', () => {
     assert.ok(q.said && q.py);
   }
 });
+test('units open one after another', async () => {
+  const { unitStatus, PASS } = await import('../public/store.js');
+  const units = [{ id: 'u1', n: 1, ready: true }, { id: 'u2', n: 2, ready: true }, { id: 'u3', n: 3 }];
+  const levels = [{ n: 1, unit: 1 }, { n: 2, unit: 2 }];
+  const s = freshState();
+  let st = unitStatus(units, levels, s);
+  assert.deepEqual([st.u1.state, st.u2.state, st.u3.state], ['open', 'locked', 'writing']);
+  s.best[1] = { score: PASS, t: 1 }; st = unitStatus(units, levels, s);
+  assert.equal(st.u2.state, 'open'); assert.ok(st.u1.passed);
+  const s2 = freshState(); s2.sessions.x = { unit: 'u1', t: 1 };
+  assert.equal(unitStatus(units, levels, s2).u2.state, 'open');
+});
