@@ -7,7 +7,7 @@
 
 ## Next
 - Published 2026-11-17: https://skot-chen.github.io/deal-chinese/ (public repo skot-chen/deal-chinese, private data repo skot-chen/deal-chinese-data). Key guide for S: docs/deal-chinese-钥匙说明.md (outside repo).
-- After S and A try Unit 1: M2 units 2–5.
+- M2 done 2026-11-17: units 2–5 written (11–99, 百千两, 万, money). Next: M3 units 6–10 (bargaining).
 
 ## Decisions
 - New site, hsk1-tandem untouched. Mandarin only. 1 lesson/week × 20 min → 12 units ≈ 3 months.
