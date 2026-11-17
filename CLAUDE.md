@@ -6,7 +6,7 @@ Public repo: no personal details (no names beyond initials S/A, no hometown, no 
 
 ## Stack (zero dependencies)
 - `public/` = the whole static site (GitHub Pages deploys this folder). `server.mjs` only serves it locally (port 8775).
-- `numbers.js` number → Chinese/pinyin (pure, tested). `content.js` units (only `ready:true` units have content).
+- `numbers.js` number → Chinese/pinyin (pure, tested). `content.js` units 1–5 (numbers) + imports `units-talk.js` units 6–12 (dialog, traps, meaning quiz).
 - `store.js` state + `merge()` for sync (pure, tested). `app.js` UI. `i18n.js` UI strings {en, zh}.
 - Sync: GitHub contents API, private repo (default skot-chen/deal-chinese-data), file `progress-<learner>.json`.
   Key in localStorage `dc-gh-token` only.

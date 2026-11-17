@@ -1,3 +1,4 @@
+import { TALK } from './units-talk.js';
 // Course content. ORIGINAL text by the project. Only units with ready:true have words/teach/self.
 // Text fields are {en, zh}: en is for A (learner), zh is the same meaning for S (teacher) / the 中文 switch.
 // teach[].say = lines S reads aloud to A (English) with the Chinese meaning so S understands them.
@@ -312,13 +313,7 @@ export const UNITS = [
       { en: 'Type 3 prices with decimals into the Number reader.', zh: '在数字朗读器里输入 3 个带小数的价格。' },
     ],
   },
-  { id: 'u6', n: 6, stage: 'call', title: { en: 'Asking the price, "too expensive"', zh: '问价、"太贵了"' } },
-  { id: 'u7', n: 7, stage: 'call', title: { en: 'Discounts: 八折 = 20% OFF, not 80%', zh: '打折：八折 = 便宜 20%，不是 80%' } },
-  { id: 'u8', n: 8, stage: 'call', title: { en: 'Deposit 定金 vs 订金, tax, invoice', zh: '定金和订金、含税、发票' } },
-  { id: 'u9', n: 9, stage: 'call', title: { en: 'Quantity: pieces, boxes, minimum order', zh: '数量：个、件、箱、起订量' } },
-  { id: 'u10', n: 10, stage: 'call', title: { en: 'Dates and delivery time', zh: '日期和交货时间' } },
-  { id: 'u11', n: 11, stage: 'call', title: { en: 'The phone call: hello, who, WeChat', zh: '打电话：喂、我是谁、加微信' } },
-  { id: 'u12', n: 12, stage: 'call', title: { en: 'Full call role-play', zh: '完整电话角色扮演' } },
+  ...TALK,
 ];
 
 /** Listening-game levels: the number range each one draws from. */

@@ -56,3 +56,6 @@ label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
 .timer .clock{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums}
 .msg{font-size:14px;margin-top:8px}
 .foot{font-size:12px;color:var(--muted);text-align:center;margin-top:30px}
+.opts{display:grid;gap:10px;margin-top:14px}
+.opts button{border:2px solid var(--line);background:var(--card);border-radius:14px;padding:14px;font-size:17px;font-weight:600;text-align:left}
+.opts button.right{border-color:var(--ok);background:#dff3e6;color:#174d2c}.opts button.bad{border-color:var(--red);background:#fbe1dc;color:#6d1c10}

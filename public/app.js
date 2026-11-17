@@ -1,6 +1,6 @@
 import { T } from './i18n.js';
 import { UNITS, LEVELS, allItems } from './content.js';
-import { freshState, merge, grade, pickCards, markTask, streak, today, question, unitStatus, PASS } from './store.js';
+import { freshState, merge, grade, pickCards, markTask, streak, today, question, unitStatus, PASS, quizRound } from './store.js';
 import { zh, zhShort, price, phone, pinyin, fmt } from './numbers.js';
 
 // ---------- small helpers
@@ -89,7 +89,7 @@ function viewToday() {
     const d = doneToday(x.id);
     const extra = x.kind === 'mission' ? `<div class="small">${esc(L(missionOfToday(u)))}</div>` : '';
     const btn = x.kind === 'mission' ? (d ? '' : `<button class="btn gold" data-mission="${x.id}">${esc(t('markDone'))}</button>`)
-      : `<button class="btn ${d ? 'ghost' : ''}" data-do="${x.kind}" data-level="${x.level || ''}">${esc(d ? t('again') : t('start'))}</button>`;
+      : `<button class="btn ${d ? 'ghost' : ''}" data-do="${x.kind}" data-level="${x.level || ''}" data-quiz="${u.id}">${esc(d ? t('again') : t('start'))}</button>`;
     return `<div class="card task ${d ? 'done' : ''}"><div class="check">${d ? '✓' : ''}</div><div class="grow"><div class="tname"><b>${esc(L(x.title))}</b> <span class="small muted">· ${x.min} ${esc(t('minutes'))}</span></div>${extra}</div>${btn}</div>`;
   }).join('')}
   ${all ? `<div class="card" style="text-align:center;font-size:20px">${esc(t('doneToday'))}</div>` : ''}`;
@@ -107,14 +107,27 @@ function viewLearn() {
   <div class="unitlist">${UNITS.map(u => { const s = st[u.id]; return `<div class="card ${u.id === cur.id ? 'cur' : ''} ${s.state === 'open' ? '' : 'locked'}" data-unit="${u.id}" role="button">
     <div class="num">${u.n}</div><div class="grow"><b>${esc(L(u.title))}</b><div class="small muted">${esc(sub(u, s))}</div></div>${icon(s)}</div>`; }).join('')}</div>`;
 }
+// Role-play dialogue: each line playable, plus "play all".
+function dialogBox(u) {
+  if (!u.dialog) return '';
+  const who = w => (w === 'you' ? t('you') : t('boss'));
+  return `<h2>${esc(t('dialog'))}</h2><p class="muted small">${esc(L(u.dialogTitle))}</p>
+  <button class="btn ghost" data-playall="${u.id}">▶ ${esc(t('playAll'))}</button>
+  <div class="card">${u.dialog.map(l => `<div class="word">${sayBtn(l.zh)}<div class="grow"><div class="small muted">${esc(who(l.who))}</div><div style="font-size:20px;font-weight:700">${esc(l.zh)}</div><div class="py">${esc(l.py)}</div><div>${esc(l.en)}</div></div></div>`).join('')}</div>`;
+}
+function playAll(u) {
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  for (const l of u.dialog) { const x = new SpeechSynthesisUtterance(l.zh); x.lang = 'zh-CN'; if (VOICE) x.voice = VOICE; x.rate = RATE; speechSynthesis.speak(x); }
+}
 // What it takes to finish a unit (used on the unit page and on the next unit's locked page).
 function passBox(u) {
   const s = status()[u.id];
   return `<div class="card"><b>${esc(t('toFinish').replace('{n}', u.n))}</b> ${s.passed ? '✅' : ''}
-    ${s.level ? `<div class="row" style="margin-top:8px"><span class="check" style="${s.game >= PASS ? 'background:var(--ok);border-color:var(--ok);color:#fff' : ''}">${s.game >= PASS ? '✓' : ''}</span>
-      <div class="grow">${esc(t('passGame').replace('{l}', s.level).replace('{p}', PASS))}<div class="small muted">${esc(t('best'))}: ${s.game}/10</div></div>
-      ${s.game >= PASS ? '' : `<button class="btn gold" data-do="game" data-level="${s.level}">${esc(t('start'))}</button>`}</div>
-    <div class="muted small" style="margin:6px 0 0 46px">${esc(t('or'))}</div>` : ''}
+    ${`<div class="row" style="margin-top:8px"><span class="check" style="${s.game >= PASS ? 'background:var(--ok);border-color:var(--ok);color:#fff' : ''}">${s.game >= PASS ? '✓' : ''}</span>
+      <div class="grow">${esc((s.level ? t('passGame') : t('passQuiz')).replace('{l}', s.level).replace('{p}', PASS))}<div class="small muted">${esc(t('best'))}: ${s.game}/10</div></div>
+      ${s.game >= PASS ? '' : s.level ? `<button class="btn gold" data-do="game" data-level="${s.level}">${esc(t('start'))}</button>` : `<button class="btn gold" data-do="quiz" data-quiz="${u.id}">${esc(t('start'))}</button>`}</div>
+    <div class="muted small" style="margin:6px 0 0 46px">${esc(t('or'))}</div>`}
     <div class="row" style="margin-top:6px"><span class="check" style="${s.lesson ? 'background:var(--ok);border-color:var(--ok);color:#fff' : ''}">${s.lesson ? '✓' : ''}</span>
       <div class="grow">${esc(t('passLesson'))}</div></div></div>`;
 }
@@ -130,7 +143,8 @@ function viewClosed(u) {
 function viewUnit(u) {
   return `<button class="btn ghost" data-back="1">‹ ${esc(t('back'))}</button>
   <h1>${esc(unitN(u.n))}: ${esc(L(u.title))}</h1><p><b>${esc(t('goal'))}:</b> ${esc(L(u.goal))}</p>
-  <div class="btns"><button class="btn" data-do="cards" data-unit-cards="${u.id}">${esc(t('cards'))}</button><button class="btn gold" data-do="game" data-level="${LEVELS.find(l => l.unit === u.n)?.n || 1}">${esc(t('game'))}</button></div>
+  <div class="btns"><button class="btn" data-do="cards" data-unit-cards="${u.id}">${esc(t('cards'))}</button>${LEVELS.find(l => l.unit === u.n) ? `<button class="btn gold" data-do="game" data-level="${LEVELS.find(l => l.unit === u.n).n}">${esc(t('game'))}</button>` : `<button class="btn gold" data-do="quiz" data-quiz="${u.id}">${esc(t('quiz'))}</button>`}</div>
+  ${dialogBox(u)}
   <h2>${esc(t('words'))}</h2><div class="card">${u.words.map(wordRow).join('')}</div>
   <h2>${esc(t('lines'))}</h2><div class="card">${u.lines.map(wordRow).join('')}</div>
   <h2>${esc(t('finishUnit'))}</h2>${passBox(u)}`;
@@ -143,6 +157,35 @@ function startCards(unitId) {
   CARD = { unit: u.id, list: pickCards(allItems(u), S.cards, 10), i: 0, flipped: false, right: 0 };
   if (R.sub === 'cards') render(); else open('practice', 'cards'); window.scrollTo(0, 0); setTimeout(() => say(CARD.list[0].zh), 150);
 }
+let QUIZ = null; // { unit, qs, i, score, answered }
+function startQuiz(unitId) {
+  const u = unitOf(unitId) || curUnit();
+  QUIZ = { unit: u.id, qs: quizRound(u, allItems(u)), i: 0, score: 0, answered: null };
+  if (R.sub === 'quiz') render(); else open('practice', 'quiz'); window.scrollTo(0, 0); setTimeout(() => say(QUIZ.qs[0].zh), 150);
+}
+function viewQuiz() {
+  const z = QUIZ, n = z.qs.length;
+  if (z.i >= n) return `<h1>${esc(t('score'))}: ${z.score} / ${n}</h1><div class="card" style="text-align:center;font-size:40px">${z.score >= PASS ? '🏆' : z.score >= 6 ? '👍' : '💪'}</div>
+    <div class="btns"><button class="btn ghost" data-back="1">${esc(t('back'))}</button><button class="btn" data-do="quiz" data-quiz="${z.unit}">${esc(t('again'))}</button></div>`;
+  const q = z.qs[z.i], a = z.answered;
+  return `<button class="btn ghost" data-back="1">‹ ${esc(t('back'))}</button>
+  <div class="row"><b class="grow">${esc(t('quiz'))} · ${z.i + 1}/${n}</b><span class="muted">${esc(t('score'))} ${z.score}</span></div>
+  <div class="bar"><i style="width:${(z.i / n) * 100}%"></i></div><p class="muted small">${esc(t('quizHint'))}</p>
+  <div class="btns"><button class="btn gold" data-say="${esc(q.zh)}">${esc(t('play'))}</button><button class="btn ghost" data-slow="1" data-say="${esc(q.zh)}">${esc(t('slow'))}</button></div>
+  <div class="opts">${q.choices.map((c, i) => `<button data-qpick="${i}" class="${a == null ? '' : c === q.answer ? 'right' : i === a ? 'bad' : ''}" ${a == null ? '' : 'disabled'}>${esc(c)}</button>`).join('')}</div>
+  <div class="result">${a == null ? '' : `${q.choices[a] === q.answer ? '✅ ' + esc(t('right')) : '❌'}<div><b>${esc(q.zh)}</b></div><div class="py">${esc(q.py)}</div><div>${esc(q.answer)}</div>
+    <button class="btn" data-qnext style="margin-top:10px">${esc(t('next'))} ›</button>`}</div>`;
+}
+function qPick(i) { const z = QUIZ; if (z.answered != null) return; z.answered = i; if (z.qs[z.i].choices[i] === z.qs[z.i].answer) z.score++; render(); }
+function qNext() {
+  const z = QUIZ; z.i++; z.answered = null;
+  if (z.i >= z.qs.length) {
+    const k = 'q' + z.unit, b = S.best[k]; if (!b || z.score > b.score) S.best[k] = { score: z.score, t: Date.now() };
+    if (z.unit === curUnit().id) markTask(S, 'quiz');
+    save(); render(); return;
+  }
+  render(); setTimeout(() => say(z.qs[z.i].zh), 150);
+}
 let GAME = null; // { level, q, i, score, answered }
 function startGame(level) {
   GAME = { level: +level || 1, i: 0, score: 0, q: question(+level || 1), answered: null };
@@ -151,6 +194,7 @@ function startGame(level) {
 function viewPractice() {
   if (R.sub === 'cards' && CARD) return viewCards();
   if (R.sub === 'game' && GAME) return viewGame();
+  if (R.sub === 'quiz' && QUIZ) return viewQuiz();
   return `<h1>${esc(t('tabPractice'))}</h1>
   <h2>${esc(t('cards'))}</h2><button class="btn big" data-do="cards">${esc(t('start'))} · ${esc(L(curUnit().title))}</button>
   <h2>${esc(t('game'))}</h2><p class="muted small">${esc(t('gameHint'))}</p>
@@ -251,7 +295,7 @@ function viewTeach() {
   <div class="card timer"><span class="clock" id="clock" style="color:${m >= 20 ? 'var(--red)' : 'inherit'}">${m}:${String(sec).padStart(2, '0')}</span>
     <div class="row"><button class="btn" id="tRun">${esc(TEACH.run ? t('timerPause') : t('timerStart'))}</button><button class="btn ghost" id="tReset">${esc(t('timerReset'))}</button></div></div>
   ${steps}
-  <h2>${esc(t('words'))}</h2><div class="card">${allItems(u).map(wordRow).join('')}</div>
+  ${dialogBox(u)}<h2>${esc(t('words'))}</h2><div class="card">${allItems(u).map(wordRow).join('')}</div>
   <label for="tNote">${esc(t('noteLabel'))}</label><textarea id="tNote" rows="3">${esc(TEACH.note || '')}</textarea>
   <button class="btn big" id="tFinish" style="margin-top:12px">${esc(t('finish'))}</button>
   <h2>${esc(t('history'))}</h2>${hist.length ? hist.map(([, h]) => `<div class="card small"><b>${esc(h.date)}</b> · ${esc(unitN(unitOf(h.unit)?.n ?? '?'))} · ${h.steps}/${h.of} ✓ · ${h.min} ${esc(t('minutes'))}${h.note ? `<div>${esc(h.note)}</div>` : ''}</div>`).join('') : `<p class="muted">${esc(t('none'))}</p>`}`;
@@ -329,10 +373,14 @@ async function connect() {
 function bindView() {
   const v = $('#view');
   v.onclick = e => {
-    const el = e.target.closest('[data-do],[data-back],[data-unit],[data-mission],[data-grade],[data-pick],[data-next],[data-step],#flash');
+    const el = e.target.closest('[data-do],[data-playall],[data-qpick],[data-qnext],[data-back],[data-unit],[data-mission],[data-grade],[data-pick],[data-next],[data-step],#flash');
     if (!el || (el.id === 'flash' && e.target.closest('[data-say]'))) return;
     if (el.dataset.do === 'cards') startCards(el.dataset.unitCards);
     else if (el.dataset.do === 'game') startGame(el.dataset.level);
+    else if (el.dataset.do === 'quiz') startQuiz(el.dataset.quiz);
+    else if (el.dataset.playall) playAll(unitOf(el.dataset.playall));
+    else if (el.dataset.qpick) qPick(+el.dataset.qpick);
+    else if ('qnext' in el.dataset) qNext();
     else if (el.dataset.back) back();
     else if (el.dataset.unit) open('learn', el.dataset.unit);
     else if (el.dataset.mission) { finishTask(el.dataset.mission); render(); }

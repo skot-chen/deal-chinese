@@ -56,7 +56,8 @@ export function unitStatus(units, levels, s) {
   const out = {};
   units.forEach((u, i) => {
     const lv = levels.find(l => l.unit === u.n);
-    const game = lv && s.best[lv.n] ? s.best[lv.n].score : 0;
+    const key = lv ? lv.n : 'q' + u.id; // number units: game level; talk units: meaning quiz
+    const game = s.best[key] ? s.best[key].score : 0;
     const lesson = Object.values(s.sessions).some(x => x.unit === u.id);
     const prev = i ? out[units[i - 1].id] : null;
     const earned = !prev || (prev.state === 'open' && prev.passed);
@@ -64,6 +65,18 @@ export function unitStatus(units, levels, s) {
       state: !u.ready ? 'writing' : earned ? 'open' : 'locked' };
   });
   return out;
+}
+
+// ---- meaning quiz (talk units): hear Chinese, pick the English meaning. Trap questions first, then random items.
+const shuffle = (a, rnd) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+export function quizRound(unit, items, rnd = Math.random, size = 10) {
+  const qs = (unit.traps || []).map(tr => ({ zh: tr.zh, py: tr.py, answer: tr.answer, choices: shuffle([tr.answer, ...tr.wrong], rnd) }));
+  for (const it of shuffle(items, rnd)) {
+    if (qs.length >= size) break;
+    const others = shuffle(items.filter(x => x.en !== it.en), rnd).slice(0, 3).map(x => x.en);
+    qs.push({ zh: it.zh, py: it.py, answer: it.en, choices: shuffle([it.en, ...others], rnd) });
+  }
+  return shuffle(qs.slice(0, size), rnd);
 }
 
 // ---- listening game

@@ -17,3 +17,18 @@ test('units are well formed', () => {
 test('every UI string has en and zh', () => {
   for (const [k, v] of Object.entries(T)) assert.ok(v.en && v.zh, k);
 });
+test('talk units have dialogues and traps', () => {
+  for (const u of UNITS.filter(x => x.n >= 6)) {
+    assert.ok(u.dialog.length >= 4 && u.dialog.every(l => (l.who === 'you' || l.who === 'boss') && l.zh && l.py && l.en), u.id);
+    for (const tr of u.traps) assert.ok(tr.answer && tr.wrong.length === 3 && !tr.wrong.includes(tr.answer), u.id);
+  }
+  assert.equal(UNITS.filter(u => u.ready).length, 12);
+});
+test('quiz rounds are valid', async () => {
+  const { quizRound } = await import('../public/store.js');
+  for (const u of UNITS.filter(x => x.n >= 6)) {
+    const qs = quizRound(u, allItems(u));
+    assert.equal(qs.length, 10, u.id);
+    for (const q of qs) { assert.equal(new Set(q.choices).size, 4, u.id + ' ' + q.zh); assert.ok(q.choices.includes(q.answer)); }
+  }
+});
