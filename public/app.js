@@ -350,13 +350,27 @@ function viewSettings() {
     ${'speechSynthesis' in window && !VOICE ? `<div class="note">${esc(t('noVoice'))}</div>` : ''}</div>
   <div class="card"><label for="curUnit">${esc(t('currentUnit'))}</label><select id="curUnit">${openUnits().map(u => `<option value="${u.id}" ${u.id === curUnit().id ? 'selected' : ''}>${u.n}. ${esc(L(u.title))}</option>`).join('')}</select></div>
   <div class="card"><b>${esc(t('syncTitle'))}</b><p class="small muted">${esc(t('syncHint'))}</p>
-    ${GH.token ? `<p class="small">${esc(GH.repo)} · ${esc(ghFile())}</p><div class="btns"><button class="btn" id="syncNow">${esc(t('syncNow'))}</button><button class="btn ghost" id="syncForget">${esc(t('forget'))}</button></div>`
+    ${!LOCK.open ? `<p class="small">🔒 ${esc(t('lockHint'))}</p><label for="syncPw">${esc(t('password'))}</label><input type="password" id="syncPw" autocomplete="off">
+    <div class="btns"><button class="btn" id="syncUnlock">${esc(t('unlock'))}</button></div><div class="msg" id="pwMsg"></div>`
+    : GH.token ? `<p class="small">${esc(GH.repo)} · ${esc(ghFile())}</p><div class="btns"><button class="btn" id="syncNow">${esc(t('syncNow'))}</button><button class="btn ghost" id="syncForget">${esc(t('forget'))}</button></div>`
       : `<label for="ghWho">${esc(t('learner'))}</label><input type="text" id="ghWho" value="${esc(GH.who)}" autocomplete="off">
     <label for="ghRepo">${esc(t('repo'))}</label><input type="text" id="ghRepo" value="${esc(GH.repo)}" placeholder="owner/deal-chinese-data" autocomplete="off">
     <label for="ghKey">${esc(t('key'))}</label><input type="password" id="ghKey" autocomplete="off" placeholder="github_pat_…">
     <div class="btns"><button class="btn" id="syncConnect">${esc(t('connect'))}</button></div>`}
-    <div class="msg" id="syncMsg"></div></div>
+    ${LOCK.open ? `<div class="msg" id="syncMsg"></div>` : ''}</div>
   <p class="foot">${esc(t('about'))}</p>`;
+}
+// Password lock on the sync settings. Only a salted SHA-256 hash is in the code (the repo is public).
+// It stops other people on the device changing sync; the real protection is still the GitHub key.
+const LOCK = { hash: 'eb6675af9d4a8c3466d7baa1c076bc81e16c17a173c5cae1006f75952d951f9f', open: false };
+try { LOCK.open = sessionStorage.getItem('dc-sync-open') === '1'; } catch {}
+async function unlock() {
+  const pw = $('#syncPw').value, m = $('#pwMsg');
+  let hex = '';
+  try { const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('dc-sync:' + pw)); hex = [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join(''); } catch {}
+  if (hex !== LOCK.hash) { m.textContent = t('pwWrong'); $('#syncPw').value = ''; return; }
+  LOCK.open = true; try { sessionStorage.setItem('dc-sync-open', '1'); } catch {}
+  render(); renderDot();
 }
 async function connect() {
   const who = $('#ghWho').value.trim(), repo = $('#ghRepo').value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\.git$|\/$/g, ''), key = $('#ghKey').value.trim();
@@ -405,6 +419,7 @@ function bindView() {
   if (R.tab === 'settings') {
     $('#rate').oninput = e => { RATE = +e.target.value; lsSet('dc-rate', String(RATE)); $('#rateV').textContent = RATE; };
     $('#curUnit').onchange = e => { S.unit = e.target.value; S.unitT = Date.now(); save(); };
+    if ($('#syncUnlock')) { $('#syncUnlock').onclick = unlock; $('#syncPw').onkeydown = e => { if (e.key === 'Enter') unlock(); }; }
     if ($('#syncConnect')) $('#syncConnect').onclick = connect;
     if ($('#syncNow')) $('#syncNow').onclick = () => { GH.dirty = true; ghSync(); };
     if ($('#syncForget')) $('#syncForget').onclick = () => { if (!confirm(t('forgetAsk'))) return; GH.token = ''; lsSet('dc-gh-token', ''); setSync('', ''); render(); };
