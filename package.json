@@ -1,0 +1,12 @@
+{
+  "name": "deal-chinese",
+  "private": true,
+  "type": "module",
+  "description": "Business Mandarin for busy learners: numbers, prices, bargaining, phone calls.",
+  "scripts": {
+    "start": "node server.mjs --open",
+    "dev": "node server.mjs",
+    "test": "node --test test/*.test.mjs",
+    "check": "node --test test/*.test.mjs"
+  }
+}
