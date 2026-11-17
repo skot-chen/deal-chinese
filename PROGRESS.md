@@ -6,7 +6,7 @@
   number reader, GitHub sync (tested with a mocked API only). 8 tests green.
 
 ## Next
-- Publish: repo skot-chen/deal-chinese (public, Pages) + private skot-chen/deal-chinese-data — waiting for S's OK.
+- Published 2026-11-17: https://skot-chen.github.io/deal-chinese/ (public repo skot-chen/deal-chinese, private data repo skot-chen/deal-chinese-data). Key guide for S: docs/deal-chinese-钥匙说明.md (outside repo).
 - After S and A try Unit 1: M2 units 2–5.
 
 ## Decisions
